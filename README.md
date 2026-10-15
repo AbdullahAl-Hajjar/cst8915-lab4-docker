@@ -17,19 +17,19 @@
 
 ### 1. What are the main differences between a Docker image and a Docker container?
 
-An image is the read-only template: the base OS files, the dependencies, my code and the start command, all baked in as layers from the Dockerfile. A container is a running instance of that image. Docker adds a writable layer on top, gives it its own process, network and file system view, and starts the command. You can run lots of containers from one image (I ran three from `my-python-app:v3`), and deleting a container doesn't touch the image. It's a bit like a class and its objects.
+An image serves as a read-only template containing base OS files, dependencies, code, and a startup command built as Dockerfile layers. A container operates as a live instance of that same image. Docker places a writable layer on top, assigns a distinct process, network, and file system view, then launches the command. Multiple containers spawn from a single image, like running three from my-python-app:v3. Removing a container leaves the image untouched. Think of it like a programming class and its objects.
 
 ### 2. Explain how Docker's layered architecture improves efficiency.
 
-Every Dockerfile instruction becomes a layer, and Docker caches layers and reuses them whenever nothing above them changed. When I edited `app.py` and rebuilt, the `WORKDIR`, `COPY requirements.txt` and `pip install` steps all came back as `CACHED`, and only the last `COPY app.py` layer was rebuilt, so the build took seconds instead of reinstalling everything. Layers are also shared: my three containers each showed only about 209 kB of their own data on top of the same 160 MB image, and pulling an image only downloads the layers you don't already have. That's also why you put dependencies before your code in a Dockerfile.
+Each instruction creates a layer, and Docker caches them when upper steps stay the same. Editing app.py and rebuilding made WORKDIR, COPY requirements.txt, and pip install return as CACHED. Only the last COPY app.py layer rebuilt, taking seconds instead of a full reinstall. Layers are also shared. Three containers displayed about 209 kB of distinct data over a 160 MB image, and image pulls only fetch missing layers. That is why dependencies go before code inside a Dockerfile.
 
 ### 3. Why does each container get its own writable layer?
 
-So containers started from the same image stay isolated and the image itself never changes. When I wrote `data1.txt`, `data2.txt` and `data3.txt` into three containers, each one only saw its own file. When I appended to `app.py` in `app1`, copy-on-write copied the file into app1's writable layer first, so `app2` still had the original. The trade-off is that the writable layer disappears when the container is removed, so anything that needs to survive, like the Redis data in Part 6, should go in a volume.
+This keeps instances isolated while the underlying image remains unaltered. Writing data1.txt, data2.txt, and data3.txt across three containers meant each instance only accessed its own file. Appending text to app.py inside app1 triggered copy-on-write, copying the file into the writable layer so app2 kept the original version. Removing a container deletes its writable layer. Any persistent data, such as the Redis information in Part 6, requires a volume.
 
 ### 4. What are the benefits of using Docker Compose over running containers individually?
 
-With Compose the whole app (the web service, Redis, the network, the volume, environment variables and start order) lives in one `docker-compose.yml` file instead of a pile of long `docker run` commands. One `docker compose up -d` builds and starts everything, and `docker compose down` cleans it all up. Services can find each other by name (the Flask app connects to `redis` as a hostname), `depends_on` handles the start order, logs from every service show up in one place, and scaling is a single flag (`--scale web=3`). It's also easy to version-control and share, so everyone runs the same setup.
+Compose houses the entire application, including the web service, Redis, network, volume, environment variables, and startup sequence, in a single docker-compose.yml file instead of long docker run commands. Executing docker compose up -d builds and launches everything, while docker compose down handles cleanup. Services locate each other by name, allowing the Flask app to reach redis via hostname. The depends_on setting manages startup order, centralized logs gather in one location, and scaling requires just --scale web=3. Version control and sharing are simple, ensuring identical setups for everyone.
 
 ---
 
